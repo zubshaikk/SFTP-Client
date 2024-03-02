@@ -27,7 +27,7 @@ public class SFTPClient {
         this.password = password;
     }
 
-    public void connect() {
+    public boolean connect() {
         try {
             JSch jsch = new JSch();
             session = jsch.getSession(username, host, port);
@@ -38,8 +38,10 @@ public class SFTPClient {
             channel.connect();
             sftpChannel = (ChannelSftp) channel;
             System.out.println("Connected successfully to SFTP server.");
+            return true;
         } catch (Exception e) {
-            System.out.println("An error occurred while attempting to connect to the SFTP server: " + e.getMessage());    
+            System.out.println("An error occurred while attempting to connect to the SFTP server: " + e.getMessage());
+            return false;    
         }
     }
 
@@ -102,8 +104,10 @@ public void downloadFile(String remoteFilePath, String localFilePath) {
     }
 }
 
-    public static void main(String[] args) {
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(System.in))) {
+public static void main(String[] args) {
+    try (BufferedReader br = new BufferedReader(new InputStreamReader(System.in))) {
+        boolean isConnected = false;
+        while (!isConnected) {
             System.out.println("Enter SFTP details:");
             System.out.print("Host: ");
             String host = br.readLine();
@@ -115,33 +119,40 @@ public void downloadFile(String remoteFilePath, String localFilePath) {
             String password = br.readLine();
 
             SFTPClient client = new SFTPClient(host, port, username, password);
-            client.connect();
+            isConnected = client.connect();
 
-            while (true) {
-                System.out.println("Enter command (upload, download, exit):");
-                String command = br.readLine();
-                if ("exit".equalsIgnoreCase(command)) {
-                    break;
-                } else if ("upload".equalsIgnoreCase(command)) {
-                    System.out.print("Enter local file path: ");
-                    String localPath = br.readLine();
-                    System.out.print("Enter remote file path: ");
-                    String remotePath = br.readLine();
-                    client.uploadFile(localPath, remotePath);
-                } else if ("download".equalsIgnoreCase(command)) {
-                    System.out.print("Enter remote file path: ");
-                    String remotePath = br.readLine();
-                    System.out.print("Enter local file path: ");
-                    String localPath = br.readLine();
-                    client.downloadFile(remotePath, localPath);
-                } else {
-                    System.out.println("Unknown command.");
+            if (!isConnected) {
+                System.out.println("Connection failed. Please try again.");
+               
+            } else {
+                
+                while (true) {
+                    System.out.println("Enter command (upload, download, exit):");
+                    String command = br.readLine();
+                    if ("exit".equalsIgnoreCase(command)) {
+                        break;
+                    } else if ("upload".equalsIgnoreCase(command)) {
+                        System.out.print("Enter local file path: ");
+                        String localPath = br.readLine();
+                        System.out.print("Enter remote file path: ");
+                        String remotePath = br.readLine();
+                        client.uploadFile(localPath, remotePath);
+                    } else if ("download".equalsIgnoreCase(command)) {
+                        System.out.print("Enter remote file path: ");
+                        String remotePath = br.readLine();
+                        System.out.print("Enter local file path: ");
+                        String localPath = br.readLine();
+                        client.downloadFile(remotePath, localPath); 
+                    } else {
+                        System.out.println("Unknown command.");
+                    }
                 }
+                client.disconnect();
             }
-
-            client.disconnect();
-        } catch (Exception e) {
-    
         }
+    } catch (Exception e) {
+        e.printStackTrace();
     }
+}
+
 }
