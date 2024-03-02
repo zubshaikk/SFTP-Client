@@ -4,8 +4,10 @@ import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
+import com.jcraft.jsch.SftpException;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStreamReader;
 
 public class SFTPClient {
@@ -37,7 +39,7 @@ public class SFTPClient {
             sftpChannel = (ChannelSftp) channel;
             System.out.println("Connected successfully to SFTP server.");
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("An error occurred while attempting to connect to the SFTP server: " + e.getMessage());    
         }
     }
 
@@ -51,26 +53,54 @@ public class SFTPClient {
         if (session != null) {
             session.disconnect();
         }
-        System.out.println("Disconnected from FTP server.");
+        System.out.println("Disconnected from SFTP server.");
     }
 
     public void uploadFile(String localFilePath, String remoteFilePath) {
-        try {
-            sftpChannel.put(localFilePath, remoteFilePath);
-            System.out.println("Upload successful.");
-        } catch (Exception e) {
-            e.printStackTrace();
+    File localFile = new File(localFilePath);
+    if (!localFile.exists()) {
+        System.out.println("Local file does not exist: " + localFilePath);
+        return;
+    }
+
+    try {
+        sftpChannel.put(localFilePath, remoteFilePath);
+        System.out.println("Upload successful.");
+    } catch (SftpException e) {
+        if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
+            System.out.println("Remote directory does not exist: " + remoteFilePath);
+        } else {
+            System.out.println("Upload failed: " + e.getMessage());
+        }
+    } catch (Exception e) {
+        System.out.println("An error occurred while attempting to upload the file: " + e.getMessage());
+    }
+}
+
+public void downloadFile(String remoteFilePath, String localFilePath) {
+    // Before attempting the download, ensure the local directory exists
+    File localFile = new File(localFilePath);
+    File parentDir = localFile.getParentFile();
+    if (!parentDir.exists()) {
+        if (!parentDir.mkdirs()) {
+            System.out.println("Failed to create local directory: " + parentDir.getPath());
+            return;
         }
     }
 
-    public void downloadFile(String remoteFilePath, String localFilePath) {
-        try {
-            sftpChannel.get(remoteFilePath, localFilePath);
-            System.out.println("Download successful.");
-        } catch (Exception e) {
-            e.printStackTrace();
+    try {
+        sftpChannel.get(remoteFilePath, localFilePath);
+        System.out.println("Download successdownlful.");
+    } catch (SftpException e) {
+        if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
+            System.out.println("Remote file does not exist: " + remoteFilePath);
+        } else {
+            System.out.println("Download failed: " + e.getMessage());
         }
+    } catch (Exception e) {
+        System.out.println("An error occurred while attempting to download the file: " + e.getMessage());
     }
+}
 
     public static void main(String[] args) {
         try (BufferedReader br = new BufferedReader(new InputStreamReader(System.in))) {
@@ -111,7 +141,7 @@ public class SFTPClient {
 
             client.disconnect();
         } catch (Exception e) {
-            e.printStackTrace();
+    
         }
     }
 }
